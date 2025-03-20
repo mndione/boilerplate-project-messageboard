@@ -10,13 +10,13 @@ chai.use(chaiHttp);
 let boardName = 'testboard' + Date.now();
 const board = new Board({board: boardName});
 const pwd = bcrypt.hashSync('testpwd', 10);
-board.threads.push({thread: 'test thread 1', pwd: pwd});
-board.threads.push({thread: 'test thread 2', pwd: pwd});
+board.threads.push({text: 'test thread 1', delete_password: pwd});
+board.threads.push({text: 'test thread 2', delete_password: pwd});
 board.save();
 thread_delete = board.threads[0];
 thread_report = board.threads[1];
-thread_report.replies.push({reply: 'test reply 1', pwd: pwd});
-thread_report.replies.push({reply: 'test reply 2', pwd: pwd});
+thread_report.replies.push({text: 'test reply 1', delete_password: pwd});
+thread_report.replies.push({text: 'test reply 2', delete_password: pwd});
 board.save();
 reply_delete = thread_report.replies[0];
 reply_report = thread_report.replies[1];
@@ -46,7 +46,7 @@ suite('Functional Tests', function() {
           assert.equal(res.status, 200);
           assert.equal(res.type, "application/json");
           assert.isAtMost(res.body.length, 10);
-          assert.isAtMost(res.body[0].replies.length, 10);
+          assert.isAtMost(res.body[0].replies.length, 3);
           done();
         });
     });
@@ -60,7 +60,7 @@ suite('Functional Tests', function() {
       .send({"board": boardName, "thread_id": thread_delete._id, "delete_password": "test"})
       .end(function (err, res) {
         assert.equal(res.status, 200);
-        assert.equal(res.text, 'Incorrect password!');
+        assert.equal(res.text, 'incorrect password');
         done();
       });
   });
@@ -75,7 +75,7 @@ suite('Functional Tests', function() {
       .send({"board": boardName, "thread_id": thread_delete._id, "delete_password": "testpwd"})
       .end(function (err, res) {
         assert.equal(res.status, 200);
-        assert.equal(res.text, 'thread deleted!');
+        assert.equal(res.text, 'success');
         done();
       });
   });
@@ -91,7 +91,7 @@ suite('Functional Tests', function() {
       .send({"board": boardName, "thread_id": thread_report._id})
       .end(function (err, res) {
         assert.equal(res.status, 200);
-        assert.equal(res.text, 'thread reported!');
+        assert.equal(res.text, 'reported');
         done();
       });
   });
@@ -115,7 +115,7 @@ suite('Functional Tests', function() {
       chai
         .request(server)
         .keepOpen()
-        .get('/api/replies/' + boardName + '?_id=' + thread_report._id)
+        .get('/api/replies/' + boardName + '?thread_id=' + thread_report._id)
         .end(function (err, res) {
           assert.equal(res.status, 200);
           assert.equal(res.type, "application/json");
@@ -133,7 +133,7 @@ suite('Functional Tests', function() {
       .send({"board": boardName, "thread_id": thread_report._id, "delete_password": "test", "reply_id": reply_delete._id})
       .end(function (err, res) {
         assert.equal(res.status, 200);
-        assert.equal(res.text, 'Incorrect password!');
+        assert.equal(res.text, 'incorrect password');
         done();
       });
   });
@@ -148,7 +148,7 @@ suite('Functional Tests', function() {
       .send({"board": boardName, "thread_id": thread_report._id, "delete_password": "testpwd", "reply_id": reply_delete._id})
       .end(function (err, res) {
         assert.equal(res.status, 200);
-        assert.equal(res.text, 'reply deleted!');
+        assert.equal(res.text, 'success');
         done();
       });
   });
@@ -164,7 +164,7 @@ suite('Functional Tests', function() {
       .send({"board": boardName, "thread_id": thread_report._id, "reply_id": reply_report._id})
       .end(function (err, res) {
         assert.equal(res.status, 200);
-        assert.equal(res.text, 'reply reported!');
+        assert.equal(res.text, 'reported');
         done();
       });
   });

@@ -2,18 +2,18 @@ const mongoose = require('mongoose');
 mongoose.connect(process.env.MONGO_URI); 
 
 const repliesSchema = new mongoose.Schema(
-{reply: String, pwd: String, reports: {type: [String], default: []}},
-{timestamps: true,}
+{text: String, delete_password: String, reported: {type: Boolean, default: false}},
+{timestamps: {createdAt: 'created_on'}}
 );
 
 const threadsSchema = new mongoose.Schema(
 {
-    thread: String,
-    pwd: String,
+    text: String,
+    delete_password: String,
     replies: {type: [repliesSchema], default: []},
-    reports:{type: [String], default: []}
+    reported: {type: Boolean, default: false}
 },
-{timestamps: true,}
+{timestamps: {createdAt: 'created_on', updatedAt: 'bumped_on'}}
 );
 
 const boardSchema = new mongoose.Schema(

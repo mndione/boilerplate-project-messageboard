@@ -3,7 +3,7 @@
 module.exports = function (app) {
   const bcrypt = require('bcrypt');
   const Board = require('../model.js');
-  const sortByUpdatedAt = (a, b)  => (new Date(b.updatedAt)) - (new Date(a.updatedAt));
+  const sortByUpdatedAt = (a, b)  => (new Date(b.bumpded_on)) - (new Date(a.bumped_on));
 
   app.route('/api/threads/:board')
     .post(async (req, res) => {
@@ -14,7 +14,7 @@ module.exports = function (app) {
         board = Board.create({board: boardName});
       }
       const pwd = await bcrypt.hash(req.body.delete_password, 10);
-      board.threads.push({thread: req.body.text, pwd: pwd});
+      board.threads.push({text: req.body.text, delete_password: pwd});
       board.save();
       res.send("thread added!");
     })
@@ -29,6 +29,13 @@ module.exports = function (app) {
       let threads = board.threads.sort(sortByUpdatedAt).slice(0,10);
       threads = threads.map(t => {
         t.replies = t.replies.sort(sortByUpdatedAt).slice(0,3);
+        t.replies = t.replies.map(r => {
+          delete r.reported;
+          delete r.delete_password;
+          return r;
+        });
+        delete t.reported;
+        delete t.delete_password;
         return t;
       });
       res.json(threads);
@@ -47,12 +54,10 @@ module.exports = function (app) {
         return;
       }
 
-      const ipHashed = await bcrypt.hash(req.ip, process.env.REPORT_SALT);
-      if(!thread.reports.includes(ipHashed)) {
-        thread.reports.push(ipHashed);
-        board.save();
-      }
-      res.send("thread reported!");
+      thread.reported = true;
+      board.save({ timestamps: false });
+     
+      res.send("reported");
     })
     .delete(async (req, res) => {
       //delete a thread (require thread id and valid password)
@@ -71,14 +76,14 @@ module.exports = function (app) {
         return;
       }
 
-      if(!(await bcrypt.compare(req.body.delete_password, thread.pwd))){
-        res.send('Incorrect password!');
+      if(!(await bcrypt.compare(req.body.delete_password, thread.delete_password))){
+        res.send('incorrect password');
         return;
       }
 
-      thread.thread = '[Deleted]';
+      board.threads.pull(_id);
       board.save();
-      res.send('thread deleted!');
+      res.send('success');
 
     })
     
@@ -99,14 +104,10 @@ module.exports = function (app) {
         res.send('thread not found!');
         return;
       }
-
-      if(thread.thread == '[Deleted]'){
-        res.send('thread deleted, reply denied!');
-        return;
-      }
-
+            
       const pwd = await bcrypt.hash(req.body.delete_password, 10);
-      thread.replies.push({reply: req.body.text, pwd: pwd});
+      thread.replies.push({text: req.body.text, delete_password: pwd});
+      //thread.bumped_on = new Date();
       board.save();
       res.send("reply added!");
     })
@@ -119,12 +120,20 @@ module.exports = function (app) {
         return;
       }
 
-      const _id = req.query._id;
+      const _id = req.query.thread_id;
       let thread = board.threads.id(_id);
       if (!thread){ 
         res.send('thread not found!');
         return;
       }
+      delete thread.reported;
+      delete thread.delete_password;
+
+      thread.replies = thread.replies.map(r => {
+        delete r.reported;
+        delete r.delete_password;
+        return r;
+      });
 
       res.json(thread);
     })
@@ -149,12 +158,10 @@ module.exports = function (app) {
         return;
       }
 
-      const ipHashed = await bcrypt.hash(req.ip, process.env.REPORT_SALT);
-      if(!reply.reports.includes(ipHashed)) {
-        reply.reports.push(ipHashed);
-        board.save();
-      }
-      res.send("reply reported!");
+      reply.reported = true;
+      board.save({ timestamps: false });
+      
+      res.send("reported");
     })
     .delete(async (req, res) => {
       //delete a reply
@@ -180,14 +187,14 @@ module.exports = function (app) {
         return;
       }
 
-      if(!(await bcrypt.compare(req.body.delete_password, reply.pwd))){
-        res.send('Incorrect password!');
+      if(!(await bcrypt.compare(req.body.delete_password, reply.delete_password))){
+        res.send('incorrect password');
         return;
       }
 
-      reply.reply = '[Deleted]';
-      board.save();
-      res.send('reply deleted!');
+      reply.text = '[Deleted]';
+      board.save({ timestamps: false });
+      res.send('success');
 
     })
 
