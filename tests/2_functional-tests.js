@@ -2,24 +2,22 @@ const chaiHttp = require('chai-http');
 const chai = require('chai');
 const assert = chai.assert;
 const server = require('../server');
-const Board = require('../model.js');
+const Thread = require('../model.js');
 const bcrypt = require('bcrypt');
 
 chai.use(chaiHttp);
 
-let boardName = 'testboard' + Date.now();
-const board = new Board({board: boardName});
+
 const pwd = bcrypt.hashSync('testpwd', 10);
-board.threads.push({text: 'test thread 1', delete_password: pwd});
-board.threads.push({text: 'test thread 2', delete_password: pwd});
-board.save();
-thread_delete = board.threads[0];
-thread_report = board.threads[1];
+
+let thread_delete = new Thread({text: 'thread to delete :' + Date.now(), delete_password: pwd});
+let thread_report = new Thread({text: 'thread to report :' + Date.now(), delete_password: pwd});;
 thread_report.replies.push({text: 'test reply 1', delete_password: pwd});
 thread_report.replies.push({text: 'test reply 2', delete_password: pwd});
-board.save();
-reply_delete = thread_report.replies[0];
-reply_report = thread_report.replies[1];
+thread_delete.save();
+thread_report.save();
+let reply_delete = thread_report.replies[0];
+let reply_report = thread_report.replies[1];
 suite('Functional Tests', function() {
   this.timeout(5000);
   // #1
@@ -27,11 +25,11 @@ suite('Functional Tests', function() {
     chai
       .request(server)
       .keepOpen()
-      .post('/api/threads/' + boardName)
-      .send({"board": boardName, "text": "New thread", "delete_password": "pwdt"})
+      .post('/api/threads/test')
+      .send({"text": "New thread", "delete_password": "pwdt"})
       .end(function (err, res) {
         assert.equal(res.status, 200);
-        assert.equal(res.text, 'thread added!');
+        assert.equal(res.body.text, 'New thread');
         done();
       });
   });
@@ -41,7 +39,7 @@ suite('Functional Tests', function() {
       chai
         .request(server)
         .keepOpen()
-        .get('/api/threads/' + boardName)
+        .get('/api/threads/test')
         .end(function (err, res) {
           assert.equal(res.status, 200);
           assert.equal(res.type, "application/json");
@@ -56,8 +54,8 @@ suite('Functional Tests', function() {
     chai
       .request(server)
       .keepOpen()
-      .delete('/api/threads/' + boardName)
-      .send({"board": boardName, "thread_id": thread_delete._id, "delete_password": "test"})
+      .delete('/api/threads/test')
+      .send({"thread_id": thread_delete._id, "delete_password": "test"})
       .end(function (err, res) {
         assert.equal(res.status, 200);
         assert.equal(res.text, 'incorrect password');
@@ -71,8 +69,8 @@ suite('Functional Tests', function() {
     chai
       .request(server)
       .keepOpen()
-      .delete('/api/threads/' + boardName)
-      .send({"board": boardName, "thread_id": thread_delete._id, "delete_password": "testpwd"})
+      .delete('/api/threads/test')
+      .send({"thread_id": thread_delete._id, "delete_password": "testpwd"})
       .end(function (err, res) {
         assert.equal(res.status, 200);
         assert.equal(res.text, 'success');
@@ -87,8 +85,8 @@ suite('Functional Tests', function() {
     chai
       .request(server)
       .keepOpen()
-      .put('/api/threads/' + boardName)
-      .send({"board": boardName, "thread_id": thread_report._id})
+      .put('/api/threads/test')
+      .send({"thread_id": thread_report._id})
       .end(function (err, res) {
         assert.equal(res.status, 200);
         assert.equal(res.text, 'reported');
@@ -101,11 +99,11 @@ suite('Functional Tests', function() {
     chai
       .request(server)
       .keepOpen()
-      .post('/api/replies/' + boardName)
-      .send({"board": boardName, "thread_id":  thread_report._id, "text": "New reply", "delete_password": "pwdr"})
+      .post('/api/replies/test')
+      .send({"thread_id":  thread_report._id, "text": "New reply", "delete_password": "pwdr"})
       .end(function (err, res) {
         assert.equal(res.status, 200);
-        assert.equal(res.text, 'reply added!');
+        assert.isAtLeast(res.body.replies.length, 1);
         done();
       });
   });
@@ -115,7 +113,7 @@ suite('Functional Tests', function() {
       chai
         .request(server)
         .keepOpen()
-        .get('/api/replies/' + boardName + '?thread_id=' + thread_report._id)
+        .get('/api/replies/test?thread_id=' + thread_report._id)
         .end(function (err, res) {
           assert.equal(res.status, 200);
           assert.equal(res.type, "application/json");
@@ -129,8 +127,8 @@ suite('Functional Tests', function() {
     chai
       .request(server)
       .keepOpen()
-      .delete('/api/replies/' + boardName)
-      .send({"board": boardName, "thread_id": thread_report._id, "delete_password": "test", "reply_id": reply_delete._id})
+      .delete('/api/replies/test')
+      .send({"thread_id": thread_report._id, "delete_password": "test", "reply_id": reply_delete._id})
       .end(function (err, res) {
         assert.equal(res.status, 200);
         assert.equal(res.text, 'incorrect password');
@@ -144,8 +142,8 @@ suite('Functional Tests', function() {
     chai
       .request(server)
       .keepOpen()
-      .delete('/api/replies/' + boardName)
-      .send({"board": boardName, "thread_id": thread_report._id, "delete_password": "testpwd", "reply_id": reply_delete._id})
+      .delete('/api/replies/test')
+      .send({"thread_id": thread_report._id, "delete_password": "testpwd", "reply_id": reply_delete._id})
       .end(function (err, res) {
         assert.equal(res.status, 200);
         assert.equal(res.text, 'success');
@@ -160,8 +158,8 @@ suite('Functional Tests', function() {
     chai
       .request(server)
       .keepOpen()
-      .put('/api/replies/' + boardName)
-      .send({"board": boardName, "thread_id": thread_report._id, "reply_id": reply_report._id})
+      .put('/api/replies/test')
+      .send({"thread_id": thread_report._id, "reply_id": reply_report._id})
       .end(function (err, res) {
         assert.equal(res.status, 200);
         assert.equal(res.text, 'reported');

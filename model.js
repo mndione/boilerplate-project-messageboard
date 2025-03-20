@@ -16,6 +16,7 @@ const threadsSchema = new mongoose.Schema(
 {timestamps: {createdAt: 'created_on', updatedAt: 'bumped_on'}}
 );
 
+/*
 const boardSchema = new mongoose.Schema(
 {
     board: String,
@@ -24,5 +25,6 @@ const boardSchema = new mongoose.Schema(
 );
 
 const Board = mongoose.model('Board', boardSchema);
-
-module.exports = Board;
+*/
+const Thread = mongoose.model('Thread', threadsSchema);
+module.exports = Thread;
